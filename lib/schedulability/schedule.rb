@@ -46,7 +46,7 @@ class Schedulability::Schedule
 
 	### Returns +true+ if the schedule doesn't have any time periods.
 	def empty?
-		return self.positive_periods.empty?
+		return self.positive_periods.empty? && self.negative_periods.empty?
 	end
 
 
@@ -86,6 +86,22 @@ class Schedulability::Schedule
 	end
 
 
+	### Returns +true+ if the schedule has any times which overlap those of +other_schedule+.
+	def overlaps?( other_schedule )
+		return ! self.exclusive?( other_schedule )
+	end
+	alias_method :overlaps_with?, :overlaps?
+
+
+	### Returns +true+ if the schedule does not have any times which overlap those
+	### of +other_schedule+.
+	def exclusive?( other_schedule )
+		return ( self & other_schedule ).empty?
+	end
+	alias_method :exclusive_of?, :exclusive?
+	alias_method :is_exclusive_of?, :exclusive?
+
+
 	### Returns +true+ if the time periods for +other_schedule+ are the same as those for the
 	### receiver.
 	def ==( other_schedule )
@@ -122,6 +138,17 @@ class Schedulability::Schedule
 	### period criteria.
 	def ~@
 		return self.class.new( self.negative_periods, self.positive_periods )
+	end
+
+
+	### Return a string from previously parsed Schedule period objects.
+	def to_s
+		str = Schedulability::Parser.stringify( self.positive_periods )
+		unless self.negative_periods.empty?
+			str << ", not %s" % [ Schedulability::Parser.stringify(self.negative_periods) ]
+		end
+
+		return str
 	end
 
 

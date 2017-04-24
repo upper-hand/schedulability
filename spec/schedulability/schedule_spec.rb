@@ -25,6 +25,13 @@ describe Schedulability::Schedule do
 	let( :testing_time ) { Time.iso8601('2015-12-15T12:00:00-00:00') }
 
 
+	RSpec::Matchers.define( :overlap ) do |other|
+		match do |schedule|
+			schedule.overlaps?( other )
+		end
+	end
+
+
 	context "with no periods" do
 
 		let( :schedule ) { described_class.new }
@@ -160,6 +167,13 @@ describe Schedulability::Schedule do
 			expect( schedule ).to include( 'Tue Dec 15 12:00:00 2015' )
 			expect( schedule ).to include( 'Wed Dec 16 12:00:00 2015' )
 			expect( schedule ).to_not include( 'Wed Dec 16 15:05:00 2015' )
+		end
+
+
+		it "can be stringified" do
+			schedule = described_class.
+				parse( "wd {Mon Wed Fri} hr {8am-4pm}, wd {Tue Thu} hr {9am-5pm}, not hour { 3pm }" )
+			expect( schedule.to_s ).to eq( "hr { 8-16 } wd { 1 3 5 }, hr { 9-17 } wd { 2 4 }, not hr { 15 }" )
 		end
 	end
 
@@ -836,6 +850,15 @@ describe Schedulability::Schedule do
 		end
 
 
+		it "treats scales present in one schedule as infinite in the other when intersecting" do
+			schedule1 = described_class.parse( 'hr {6am-8am}' )
+			schedule2 = described_class.parse( 'wday {Thu Sat}' )
+			schedule3 = schedule1 & schedule2
+
+			expect( schedule3 ).to be == described_class.parse( 'hr {6am-8am} wday {Thu Sat}' )
+		end
+
+
 		it "can calculate unions of schedules with negated periods" do
 			schedule1 = described_class.parse( '! wday { Mon-Fri }' )
 			schedule2 = described_class.parse( '! wday { Thu }' )
@@ -872,6 +895,32 @@ describe Schedulability::Schedule do
 			expect( schedule2 ).to_not include( '2015-01-10T08:00:00-00:00' )
 			expect( schedule2 ).to_not include( '2015-01-15T15:59:59-00:00' )
 			expect( schedule2 ).to include( '2015-01-15T16:00:00-00:00' )
+		end
+
+	end
+
+
+	describe "predicates" do
+
+		it "can test if one schedule overlaps another" do
+			schedule1 = described_class.parse( "hr {8am - 5pm}" )
+			schedule2 = described_class.parse( "hr {5pm - 8am}" )
+			schedule3 = described_class.parse( "wd {Mon - Fri}" )
+
+			expect( schedule1 ).to_not overlap( schedule2 )
+			expect( schedule1 ).to overlap( schedule3 )
+			expect( schedule2 ).to overlap( schedule3 )
+		end
+
+
+		it "can test if one schedule is exclusive of another" do
+			schedule1 = described_class.parse( "hr {8am - 5pm}" )
+			schedule2 = described_class.parse( "hr {5pm - 8am}" )
+			schedule3 = described_class.parse( "wd {Mon - Fri}" )
+
+			expect( schedule1 ).to be_exclusive_of( schedule2 )
+			expect( schedule1 ).to_not be_exclusive_of( schedule3 )
+			expect( schedule2 ).to_not be_exclusive_of( schedule3 )
 		end
 
 	end

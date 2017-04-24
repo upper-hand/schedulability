@@ -33,9 +33,9 @@ hoespec = Hoe.spec 'schedulability' do
 	self.dependency 'loggability',     '~> 0.11'
 
 	self.dependency 'timecop',         '~> 0.8', :developer
-	self.dependency 'hoe-deveiate',    '~> 0.4', :developer
-	self.dependency 'hoe-bundler',     '~> 1.2', :developer
-	self.dependency 'simplecov',       '~> 0.7', :developer
+	self.dependency 'rdoc',            '~> 4.2', :developer
+	self.dependency 'hoe-deveiate',    '~> 0.8', :developer
+	self.dependency 'simplecov',       '~> 0.12', :developer
 
 	self.license "BSD-3-Clause"
 	self.require_ruby_version( '>=2.2.0' )
@@ -67,7 +67,7 @@ if File.directory?( '.hg' )
 	RDoc::Task.new( 'docs' ) do |rdoc|
 	    rdoc.main = "README.md"
 	    rdoc.rdoc_files.include( "*.rdoc", "*.md", "ChangeLog", "lib/**/*.rb" )
-	    rdoc.generator = :sixfish
+	    rdoc.generator = :fivefish
 		rdoc.title = 'Schedulability'
 	    rdoc.rdoc_dir = 'doc'
 	end

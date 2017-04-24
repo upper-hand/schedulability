@@ -56,6 +56,35 @@ module Schedulability::Parser
 	module_function
 	###############
 
+	### Normalize an array of parsed periods into a human readable string.
+	def stringify( periods )
+		strings = []
+		periods.each do |period|
+			period_string = []
+			period.sort_by{|k, v| k}.each do |scale, ranges|
+				range_string = ""
+				range_string << "%s { " % [ scale.to_s ]
+
+				range_strings = ranges.each_with_object( [] ).each do |range, acc|
+					if range.min == range.max
+						acc << range.min
+					elsif range.exclude_end?
+						acc << "%d-%d" % [ range.min, range.max + 1 ]
+					else
+						acc << "%d-%d" % [ range.min, range.max ]
+					end
+				end
+
+				range_string << range_strings.join( ' ' ) << " }"
+				period_string << range_string
+			end
+			strings << period_string.join( ' ' )
+		end
+
+		return strings.join( ', ' )
+	end
+
+
 	### Scan +expression+ for periods and return them in an Array.
 	def extract_periods( expression )
 		positive_periods = []
@@ -64,7 +93,6 @@ module Schedulability::Parser
 		expression.strip.downcase.split( /\s*,\s*/ ).each do |subexpr|
 			hash, negative = self.extract_period( subexpr )
 			if negative
-				self.log.debug "Adding %p to the negative "
 				negative_periods << hash
 			else
 				positive_periods << hash
@@ -81,7 +109,6 @@ module Schedulability::Parser
 		scanner = StringScanner.new( expression )
 
 		negative = scanner.skip( /\s*(!|not |except )\s*/ )
-		self.log.debug "Period %p is %snegative!" % [ expression, negative ? "" : "not " ]
 
 		while scanner.scan( PERIOD_PATTERN )
 			ranges = scanner[:ranges].strip
@@ -233,7 +260,6 @@ module Schedulability::Parser
 
 		ints = ranges.split( /(?<!-)\s+(?!-)/ ).flat_map do |range|
 			min, max = range.split( /\s*-\s*/, 2 )
-			self.log.debug "Min = %p, max = %p" % [ min, max ]
 
 			min = yield( min )
 			raise Schedulability::ParseError, "invalid %s value: %p" % [ scale, min ] unless
@@ -243,10 +269,8 @@ module Schedulability::Parser
 			max = yield( max )
 			raise Schedulability::ParseError, "invalid %s value: %p" % [ scale, max ] unless
 				valid_range.cover?( max )
-			self.log.debug "Parsed min = %p, max = %p" % [ min, max ]
 
 			if min > max
-				self.log.debug "wrapped: %d-%d and %d-%d" % [ minval, max, min, maxval ]
 				Range.new( minval, max, exclude_end ).to_a +
 					Range.new( min, maxval, false ).to_a
 			else
@@ -261,8 +285,6 @@ module Schedulability::Parser
 	### Coalese an Array of non-contiguous Range objects from the specified +ints+ for +scale+.
 	def coalesce_ranges( ints, scale )
 		exclude_end = EXCLUSIVE_RANGED_SCALES.include?( scale )
-		self.log.debug "Coalescing %d ints to Ranges (%p, %s)" %
-			[ ints.size, ints, exclude_end ? "exclusive" : "inclusive" ]
 		ints.flatten!
 		return [] if ints.empty?
 
@@ -276,8 +298,6 @@ module Schedulability::Parser
 			last_val = values.last
 			last_val += 1 if exclude_end
 			Range.new( values.first, last_val, exclude_end )
-		end.tap do |ranges|
-			self.log.debug "Coalesced range integers to Ranges: %p" % [ ranges ]
 		end
 	end
 
@@ -304,8 +324,8 @@ module Schedulability::Parser
 	### Return a copy of the specified +val+ with any leading zeros stripped.
 	### If the resulting string is empty, return "0".
 	def strip_leading_zeros( val )
-		without_leading_zeros = val.sub( /\A0+/, '' )
-		without_leading_zeros.empty? ? '0' : without_leading_zeros
+		return val.sub( /\A0+(?!$)/, '' )
 	end
 
 end # module Schedulability::Parser
+
